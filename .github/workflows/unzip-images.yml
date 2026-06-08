@@ -13,6 +13,8 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Configure Git Buffer
       run: |
@@ -27,14 +29,26 @@ jobs:
         for file in zips/part*.zip; do
           if [ -f "$file" ]; then
             echo "Extracting $file..."
-            unzip -o "$file" -d images/
+            # -j flag ensures images are extracted directly into 'images' folder, ignoring internal zip folders
+            unzip -o -j "$file" -d images/
           fi
         done
+
+    - name: Verify Extracted Files
+      run: |
+        echo "Total files extracted in images folder:"
+        ls -1 images/ | wc -l
 
     - name: Commit and Push Extracted Images
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add images/
-        git diff-index --quiet HEAD || git commit -m "Automated unzip: All 26 parts extracted"
-        git push origin main
+        
+        # Check if there are changes to commit
+        if git diff-index --quiet HEAD; then
+          echo "No changes detected to commit."
+        else
+          git commit -m "Automated unzip: Extracted all NFT images directly to images folder"
+          git push origin main
+        fi
