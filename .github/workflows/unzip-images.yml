@@ -16,27 +16,35 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Configure Git Buffer
+    - name: Configure Git Settings
       run: |
-        git config --global http.postBuffer 524288000
-        git config --global core.compression 0
+        git config --global http.postBuffer 1073741824
+        git config --global core.compression 9
+        git config --global http.maxRequestSize 1073741824
 
     - name: Create Images Directory
       run: mkdir -p images
 
-    - name: Unzip All Parts
+    - name: Unzip and Extract From Root
       run: |
-        for file in zips/part*.zip; do
+        for file in part*.zip; do
           if [ -f "$file" ]; then
-            echo "Extracting $file..."
-            # -j flag ensures images are extracted directly into 'images' folder, ignoring internal zip folders
-            unzip -o -j "$file" -d images/
+            echo "Processing $file..."
+            # Create a temporary directory for extraction
+            mkdir -p temp_extract
+            unzip -o "$file" -d temp_extract/
+            
+            # Find all images inside nested folders and move them directly to images/
+            find temp_extract/ -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) -exec mv {} images/ \;
+            
+            # Clean up temporary directory
+            rm -rf temp_extract
           fi
         done
 
     - name: Verify Extracted Files
       run: |
-        echo "Total files extracted in images folder:"
+        echo "Total images successfully structured in images folder:"
         ls -1 images/ | wc -l
 
     - name: Commit and Push Extracted Images
@@ -45,10 +53,9 @@ jobs:
         git config --local user.name "GitHub Action"
         git add images/
         
-        # Check if there are changes to commit
         if git diff-index --quiet HEAD; then
-          echo "No changes detected to commit."
+          echo "No new images detected to commit."
         else
-          git commit -m "Automated unzip: Extracted all NFT images directly to images folder"
+          git commit -m "Automated unzip: Extracted images from root zip files"
           git push origin main
         fi
