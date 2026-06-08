@@ -1,0 +1,40 @@
+name: Unzip NFT Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unzip-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Configure Git Buffer
+      run: |
+        git config --global http.postBuffer 524288000
+        git config --global core.compression 0
+
+    - name: Create Images Directory
+      run: mkdir -p images
+
+    - name: Unzip All Parts
+      run: |
+        for file in zips/part*.zip; do
+          if [ -f "$file" ]; then
+            echo "Extracting $file..."
+            unzip -o "$file" -d images/
+          fi
+        done
+
+    - name: Commit and Push Extracted Images
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add images/
+        git diff-index --quiet HEAD || git commit -m "Automated unzip: All 26 parts extracted"
+        git push origin main
